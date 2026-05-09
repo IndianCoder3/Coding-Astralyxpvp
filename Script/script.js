@@ -1,7 +1,7 @@
 /* ======================================
    ASTRALYXPVP JAVASCRIPT
    ====================================== */
-
+const API = "https://astralyxpvp.pages.dev/api/";
 // ======== HOME PAGE - IP COPY FUNCTION ========
 function copyIP(){
   const ip = document.getElementById('server-ip').innerText;
@@ -13,51 +13,66 @@ function copyIP(){
 }
 
 // ======== LEADERBOARD PAGE - UTILITY FUNCTIONS ========
-function escapeHtml(s){
-  return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function escapeHtml(s) {
+  return (s ?? '').toString().replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
 }
 
-async function loadGamemodes(){
+async function loadGamemodes() {
   const select = document.getElementById('gm');
-  if(!select) return;
-  select.innerHTML = '';
-  try{
-    const res = await fetch('https://astralyxpvp.chessmrbeaston.workers.dev/api?gamemodes=true');
+  if (!select) return;
+
+  try {
+    // Fixed URL: changed 'gamemodes' to 'gamemode' per your API spec
+    const res = await fetch('${API}?gamemode=true');
     const data = await res.json();
-    const gms = (data && data.gamemodes) ? data.gamemodes : [];
-    if(!gms.length){
-      select.innerHTML = '<select id="gm"><option value="macepvpffa1">macepvpffa1</option><option value="netheritepotffa1">netheritepotffa1</option><option value="swordffa1">swordffa1</option></select>';
-      return;
+    
+    // Extract gamemodes array
+    const gms = (data && Array.isArray(data.gamemodes)) ? data.gamemodes : [];
+
+    if (gms.length > 0) {
+      select.innerHTML = ''; // Clear fallback options if API succeeds
+      
+      gms.forEach(gm => {
+        const opt = document.createElement('option');
+        opt.value = gm;
+        opt.textContent = gm;
+        select.appendChild(opt);
+      });
+
+      // Logic to pick the default active gamemode
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryGm = urlParams.get('gamemode')?.toLowerCase();
+
+      if (queryGm && gms.includes(queryGm)) {
+        select.value = queryGm;
+      } else {
+        // Preference: swordffa1 > swordffa > first item in list
+        const defaultChoice = gms.includes('swordffa1') ? 'swordffa1' : 
+                             (gms.includes('swordffa') ? 'swordffa' : gms[0]);
+        select.value = defaultChoice;
+      }
     }
-    for(const gm of gms){
-      const opt = document.createElement('option');
-      opt.value = gm;
-      opt.textContent = gm;
-      select.appendChild(opt);
-    }
-    const pref = gms.includes('swordffa') ? 'swordffa' : (gms.includes('swordffa1') ? 'swordffa1' : gms[0]);
-    select.value = pref;
-    const q = (new URL(location.href).searchParams.get('gamemode') || '').toLowerCase();
-    if(q && gms.includes(q)) select.value = q;
-  }catch{
-    select.innerHTML = '<select id="gm"><option value="macepvpffa1">macepvpffa1</option><option value="netheritepotffa1">netheritepotffa1</option><option value="swordffa1">swordffa1</option></select>';
+  } catch (err) {
+    console.error("Failed to load gamemodes from API, using fallback UI.", err);
+    // Keep existing fallback options if the API fails
   }
 }
 
-async function refreshLB(){
+async function refreshLB() {
   const gmSelect = document.getElementById('gm');
-  if(!gmSelect) return;
-  const gm = gmSelect.value;
   const out = document.getElementById('lb');
-  
-  // Loading state
+  if (!gmSelect || !out) return;
+
+  const gm = gmSelect.value;
   out.innerHTML = '<div style="text-align:center;color:var(--muted);padding:14px 0">Loading leaderboard...</div>';
-  
-  try{
-    const res = await fetch('https://astralyxpvp.chessmrbeaston.workers.dev/api?gamemode=' + encodeURIComponent(gm) + '&leaderboard=true');
+
+  try {
+    const res = await fetch(`${API}?gamemode=${encodeURIComponent(gm)}&leaderboard=true`);
     const data = await res.json();
-    
-    if(!Array.isArray(data) || data.length === 0){
+
+    if (!Array.isArray(data) || data.length === 0) {
       out.innerHTML = '<div style="text-align:center;color:var(--muted);padding:14px 0">No data found for this gamemode.</div>';
       return;
     }
@@ -66,27 +81,35 @@ async function refreshLB(){
     data.slice(0, 100).forEach((p, i) => {
       const name = escapeHtml(p.username);
       const elo = escapeHtml(p.elo);
-      html += '<tr><td class="rank">#' + (i+1) + '</td><td><img src="https://minotar.net/helm/' + encodeURIComponent(p.username) + '/24.png" style="vertical-align:middle;margin-right:10px;border-radius:3px"> ' + name + '</td><td>' + elo + '</td></tr>';
+      html += `<tr>
+        <td class="rank">#${i + 1}</td>
+        <td>
+          <img src="https://minotar.net/helm/${encodeURIComponent(p.username)}/24.png" style="vertical-align:middle;margin-right:10px;border-radius:3px">
+          ${name}
+        </td>
+        <td>${elo}</td>
+      </tr>`;
     });
     html += '</tbody></table>';
     out.innerHTML = html;
 
-    // Sync URL with selected gamemode
+    // Update URL without refreshing page
     const u = new URL(location.href);
     u.searchParams.set('gamemode', gm);
     history.replaceState({}, '', u.toString());
-    
-  }catch{
-    out.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:14px 0">Error loading leaderboard. If you do see the table this is a bug!</div>';
+
+  } catch (err) {
+    out.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:14px 0">Error loading leaderboard data.</div>';
   }
 }
 
-// Leaderboard initialization
+// Initialization
 (async () => {
-  if(document.getElementById('gm')){
+  const gmSelect = document.getElementById('gm');
+  if (gmSelect) {
     await loadGamemodes();
     await refreshLB();
-    document.getElementById('gm').addEventListener('change', refreshLB);
+    gmSelect.addEventListener('change', refreshLB);
   }
 })();
 
@@ -95,7 +118,7 @@ async function updateNavStatus(){
   const el = document.getElementById('nav-status');
   if(!el) return;
   try{
-    const r = await fetch('https://astralyxpvp.chessmrbeaston.workers.dev/api?serverStatus=true');
+    const r = await fetch('${API}?serverStatus=true');
     const s = await r.json();
     if(s.online){
       el.classList.add('online');
