@@ -1,7 +1,7 @@
 /* ======================================
    ASTRALYXPVP JAVASCRIPT
    ====================================== */
-const API = "https://astralyxpvp.pages.dev/api/";
+const API_BASE = "https://astralyxpvp.pages.dev/api/";
 // ======== HOME PAGE - IP COPY FUNCTION ========
 function copyIP(){
   const ip = document.getElementById('server-ip').innerText;
@@ -25,7 +25,7 @@ async function loadGamemodes() {
 
   try {
     // Fixed URL: changed 'gamemodes' to 'gamemode' per your API spec
-    const res = await fetch('${API}?gamemode=true');
+    const res = await fetch('${API_BASE}?gamemode=true');
     const data = await res.json();
     
     // Extract gamemodes array
@@ -69,7 +69,7 @@ async function refreshLB() {
   out.innerHTML = '<div style="text-align:center;color:var(--muted);padding:14px 0">Loading leaderboard...</div>';
 
   try {
-    const res = await fetch(`${API}?gamemode=${encodeURIComponent(gm)}&leaderboard=true`);
+    const res = await fetch(`${API_BASE}?gamemode=${encodeURIComponent(gm)}&leaderboard=true`);
     const data = await res.json();
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -118,7 +118,7 @@ async function updateNavStatus(){
   const el = document.getElementById('nav-status');
   if(!el) return;
   try{
-    const r = await fetch('${API}?serverStatus=true');
+    const r = await fetch('${API_BASE}?serverStatus=true');
     const s = await r.json();
     if(s.online){
       el.classList.add('online');
