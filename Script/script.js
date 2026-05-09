@@ -49,10 +49,14 @@ async function refreshLB(){
   if(!gmSelect) return;
   const gm = gmSelect.value;
   const out = document.getElementById('lb');
+  
+  // Loading state
   out.innerHTML = '<div style="text-align:center;color:var(--muted);padding:14px 0">Loading leaderboard...</div>';
+  
   try{
     const res = await fetch('https://astralyxpvp.chessmrbeaston.workers.dev/api?gamemode=' + encodeURIComponent(gm) + '&leaderboard=true');
     const data = await res.json();
+    
     if(!Array.isArray(data) || data.length === 0){
       out.innerHTML = '<div style="text-align:center;color:var(--muted);padding:14px 0">No data found for this gamemode.</div>';
       return;
@@ -67,9 +71,11 @@ async function refreshLB(){
     html += '</tbody></table>';
     out.innerHTML = html;
 
+    // Sync URL with selected gamemode
     const u = new URL(location.href);
     u.searchParams.set('gamemode', gm);
     history.replaceState({}, '', u.toString());
+    
   }catch{
     out.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:14px 0">Error loading leaderboard. If you do see the table this is a bug!</div>';
   }
